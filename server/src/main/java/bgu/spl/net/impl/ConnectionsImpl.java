@@ -18,6 +18,7 @@ public class ConnectionsImpl <T> implements Connections<T> {
     }
     
     public boolean send(int connectionId, T msg) {
+        System.out.println("send to connectionId: " + connectionId + " msg: " + msg);
         if (clients.get(connectionId) != null) {
             clients.get(connectionId).send(msg);
             return true;
@@ -48,10 +49,7 @@ public class ConnectionsImpl <T> implements Connections<T> {
         }
     }
 
-    public void addConnection(int uniqueId, ConnectionHandler<T> connection) {
-        if (clients.get(uniqueId) == null) {
-            uniqueId++;
-        }
+    public void addConnection(Integer uniqueId, ConnectionHandler<T> connection) {
         clients.putIfAbsent(uniqueId, connection);
     }    
 

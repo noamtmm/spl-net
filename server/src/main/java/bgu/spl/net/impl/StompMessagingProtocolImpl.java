@@ -15,6 +15,7 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
     private static final ConcurrentHashMap<Integer, String> activeUsers = new ConcurrentHashMap<>(); // connectionId -> username
     private static final ConcurrentHashMap<Integer, Map<String, String>> subscriptions = new ConcurrentHashMap<>(); // connectionId -> (topic -> subId)
     private static Integer messageIdCounter = 0;
+    private static int receiptIdCounter = 0;
 
     @Override
     public void start(int connectionId, Connections<T> connections) {
@@ -28,6 +29,7 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
     public void process(T message) {
         StompMessage stompMessage = StompMessage.parse((String) message);
         String command = stompMessage.getCommand();
+        System.out.println(command);
 
         switch (command) {
             case "CONNECT":
@@ -61,6 +63,7 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
         String login = msg.getHeader("login");
         String passcode = msg.getHeader("passcode");
         String acceptVersion = msg.getHeader("accept-version");
+       
 
         if (login == null || passcode == null || acceptVersion == null) {
             sendError("Missing required headers");
@@ -81,6 +84,7 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
             }
             // Check if already connected
             if (isUserConnected(login)) {
+                System.out.println("User already logged in");
                 sendError("User already logged in");
                 return;
             }
@@ -96,7 +100,13 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
         StompMessage connected = new StompMessage();
         connected.setCommand("CONNECTED");
         connected.addHeader("version", "1.2");
-        connections.send(connectionId, (T) connected.toString());
+       
+        boolean ans =  connections.send(connectionId, (T) connected.toString());
+       
+        if (!ans) {
+            System.out.println("Error sending CONNECTED frame");
+            shouldTerminate = true;
+        }
     }
 
     private void handleSubscribe(StompMessage msg) {
@@ -216,6 +226,7 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
 
     @SuppressWarnings("unchecked")
     private void sendError(String message) {
+        System.out.println("Error: " + message);
         StompMessage error = new StompMessage();
         error.setCommand("ERROR");
         error.addHeader("message", message);
@@ -227,7 +238,7 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
     private void sendReceipt(String receiptId) {
         StompMessage receipt = new StompMessage();
         receipt.setCommand("RECEIPT");
-        receipt.addHeader("receipt-id", receiptId);
+        receipt.addHeader("receipt-id", String.valueOf(receiptIdCounter++));  // Use counter instead of passed ID
         connections.send(connectionId, (T)receipt.toString());
     }
 }
