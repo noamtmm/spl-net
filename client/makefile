@@ -27,4 +27,3 @@ bin/StompProtocol.o: src/StompProtocol.cpp
 .PHONY: clean
 clean:
 	rm -f bin/*
-	

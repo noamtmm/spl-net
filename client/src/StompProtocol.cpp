@@ -1,4 +1,5 @@
 #include "../include/StompProtocol.h"
+#include <fstream>
 
 StompProtocol::StompProtocol() : logged_in(false), username(""), subscriptions() {}
 
@@ -103,17 +104,35 @@ bool StompProtocol::handleCommand(const string &input, ConnectionHandler &connec
 
         return false;
     }
-    else if (cmd == "report")
-    {
-        // TODO: implement
+    else if (cmd == "report") {
+
+        string filename;
+        ss >> filename;
+        
+        // Read file
+        std::ifstream file(filename);
+        if (!file.is_open()) {
+            cout << "Could not open file" << endl;
+            return false;
+        }
+        
+        // Parse JSON and create SEND frame
+        map<string, string> headers;
+        headers["destination"] = "/topic/name"; // Replace with actual topic
+        string frame = createFrame("SEND", headers);
+        return connectionHandler.sendFrameAscii(frame, '\0');
     }
-    else if (cmd == "summary")
-    {
-        // TODO: implement
+    else if (cmd == "summary") {
+        string channel, username, filename;
+        ss >> channel >> username >> filename;
+        // TODO: Implement summary logic
+        return true;
     }
-    else if (cmd == "logout")
-    {
-        // TODO: implement
+    else if (cmd == "logout") {
+        map<string, string> headers;
+        headers["receipt"] = "logout";
+        string frame = createFrame("DISCONNECT", headers);
+        return connectionHandler.sendFrameAscii(frame, '\0');
     }
 
     cout << "Invalid command" << endl; // TODO: check if certain output is needed

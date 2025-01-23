@@ -28,7 +28,7 @@ void StompClient::run()
 
 	while (isRunning && getline(cin, input))
 	{
-		std::cout << input << std::endl;
+		//std::cout << input << std::endl;
 		std:: vector<std::string> tokens;
 		split_str(input, ' ', tokens);
 		// handle only the login command to check that the connection handler is established

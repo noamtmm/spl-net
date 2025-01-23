@@ -18,7 +18,7 @@ ConnectionHandler::~ConnectionHandler()
 
 bool ConnectionHandler::connect()
 {
-	std::cout << "Starting connect to "
+	std::cout << "Starting to connect to "
 			  << host_ << ":" << port_ << std::endl;
 	try
 	{
