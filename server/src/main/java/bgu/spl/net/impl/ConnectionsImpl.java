@@ -48,10 +48,7 @@ public class ConnectionsImpl <T> implements Connections<T> {
         }
     }
 
-    public void addConnection(int uniqueId, ConnectionHandler<T> connection) {
-        if (clients.get(uniqueId) == null) {
-            uniqueId++;
-        }
+    public void addConnection(Integer uniqueId, ConnectionHandler<T> connection) {
         clients.putIfAbsent(uniqueId, connection);
     }    
 

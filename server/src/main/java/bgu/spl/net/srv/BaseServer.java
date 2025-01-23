@@ -1,8 +1,8 @@
 package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
-import bgu.spl.net.api.MessagingProtocol;
-import bgu.spl.net.impl.stomp.StompMessage;
+import bgu.spl.net.api.StompMessagingProtocol;
+import bgu.spl.net.impl.ConnectionsImpl;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -12,41 +12,45 @@ import java.util.function.Supplier;
 public abstract class BaseServer<T> implements Server<T> {
 
     private final int port;
-    private final Supplier<MessagingProtocol<T>> protocolFactory;
+    private final Supplier<StompMessagingProtocol<T>> protocolFactory;
     private final Supplier<MessageEncoderDecoder<T>> encdecFactory;
     private ServerSocket sock;
+    private ConnectionsImpl<T> connections;
     
 
-    public BaseServer(
-            int port,
-            Supplier<MessagingProtocol<T>> protocolFactory,
-            Supplier<MessageEncoderDecoder<T>> encdecFactory) {
-
+    public BaseServer(int port, Supplier<StompMessagingProtocol<T>> protocolFactory, Supplier<MessageEncoderDecoder<T>> encdecFactory) {
         this.port = port;
         this.protocolFactory = protocolFactory;
         this.encdecFactory = encdecFactory;
 		this.sock = null;
+        this.connections = new ConnectionsImpl<>();
     }
 
     @Override
     public void serve() {
-
         try (ServerSocket serverSock = new ServerSocket(port)) {
-			System.out.println("Server started");
-
+            System.out.println("TPC Server started");
+    
             this.sock = serverSock; //just to be able to close
-
+    
             while (!Thread.currentThread().isInterrupted()) {
-
-                //Socket clientSock = serverSock.accept();
-
-                //BlockingConnectionHandler<T> handler = new BlockingConnectionHandler<>(clientSock, encdecFactory.get(),  protocolFactory.get());
-
-                //execute(handler);
+                Socket clientSock = serverSock.accept();
+                System.out.println("New client is trying to connect");
+    
+                BlockingConnectionHandler<T> handler = new BlockingConnectionHandler<>(
+                    clientSock,  
+                    encdecFactory.get(),  
+                    protocolFactory.get(),
+                    this.connections
+                );
+                connections.addConnection(handler.getId(), handler);
+                execute(handler);
             }
         } catch (IOException ex) {
+            System.out.println("Server failed to start on port " + port);
+            ex.printStackTrace();
         }
-
+    
         System.out.println("server closed!!!");
     }
 
@@ -57,5 +61,5 @@ public abstract class BaseServer<T> implements Server<T> {
     }
 
     protected abstract void execute(BlockingConnectionHandler<T>  handler);
-
+        
 }
