@@ -4,6 +4,7 @@ import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.api.MessagingProtocol;
 import bgu.spl.net.api.StompMessagingProtocol;
 
+
 import java.io.Closeable;
 import java.util.function.Supplier;
 
@@ -27,14 +28,14 @@ public interface Server<T> extends Closeable {
             Supplier<StompMessagingProtocol<T> > protocolFactory,
             Supplier<MessageEncoderDecoder<T> > encoderDecoderFactory) {
 
-        return new BaseServer<T>(port, (Supplier<StompMessagingProtocol<T>>) protocolFactory, (Supplier<MessageEncoderDecoder<T>>) encoderDecoderFactory) {
+        return new BaseServer<T>(port, protocolFactory, encoderDecoderFactory) {
             @Override
             protected void execute(BlockingConnectionHandler<T>  handler) {
                 new Thread(handler).start();
             }
         };
-
     }
+    
 
     /**
      * This function returns a new instance of a reactor pattern server

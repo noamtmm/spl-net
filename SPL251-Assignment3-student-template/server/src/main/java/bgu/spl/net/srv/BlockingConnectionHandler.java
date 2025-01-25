@@ -2,12 +2,11 @@ package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.api.StompMessagingProtocol;
-import bgu.spl.net.impl.ConnectionsImpl;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler<T> {
 
@@ -18,13 +17,16 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     private BufferedOutputStream out;
     private volatile boolean connected = true;
 
-    private Connections<T> connections = new ConnectionsImpl<>();
-    private static int uniqueId = 0;
+    private Connections<T> connections;
+    private static AtomicInteger uniqueId = new AtomicInteger(0);
+    private int id;
 
-    public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, StompMessagingProtocol<T> protocol) {
+    public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, StompMessagingProtocol<T> protocol, Connections<T> connections) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
+        this.connections = connections;
+        this.id = uniqueId.getAndIncrement();
     }
 
     @Override
@@ -32,15 +34,13 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
         try (Socket sock = this.sock) { //just for automatic closing
             int read;
 
-            protocol.start(uniqueId, connections);
-            uniqueId++;
-
-            //add start, change name, add a method in connections for id
+            protocol.start(id, connections);  
             in = new BufferedInputStream(sock.getInputStream());
             out = new BufferedOutputStream(sock.getOutputStream());
 
             while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
                 T nextMessage = encdec.decodeNextByte((byte) read);
+                
                 if (nextMessage != null) {
                     protocol.process(nextMessage);
                 }
@@ -60,10 +60,15 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
 
     @Override
     public void send(T msg) {
+        //need to check if another thread can send the messages
         try {
             out.write(encdec.encode(msg));
             out.flush();
         }
         catch (IOException e) {}
+    }
+
+   public int getId() {
+        return id;
     }
 }

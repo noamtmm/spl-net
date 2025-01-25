@@ -2,6 +2,7 @@ package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.api.StompMessagingProtocol;
+import bgu.spl.net.impl.ConnectionsImpl;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -14,6 +15,7 @@ public abstract class BaseServer<T> implements Server<T> {
     private final Supplier<StompMessagingProtocol<T>> protocolFactory;
     private final Supplier<MessageEncoderDecoder<T>> encdecFactory;
     private ServerSocket sock;
+    private ConnectionsImpl<T> connections;
     
 
     public BaseServer(int port, Supplier<StompMessagingProtocol<T>> protocolFactory, Supplier<MessageEncoderDecoder<T>> encdecFactory) {
@@ -21,26 +23,29 @@ public abstract class BaseServer<T> implements Server<T> {
         this.protocolFactory = protocolFactory;
         this.encdecFactory = encdecFactory;
 		this.sock = null;
+        this.connections = new ConnectionsImpl<>();
     }
 
     @Override
     public void serve() {
-        System.out.println("blabla");
         try (ServerSocket serverSock = new ServerSocket(port)) {
-            System.out.println("Server started");
+            System.out.println("TPC Server started");
     
             this.sock = serverSock; //just to be able to close
     
             while (!Thread.currentThread().isInterrupted()) {
                 Socket clientSock = serverSock.accept();
-                System.out.println("New client connected");
+                System.out.println("New client is trying to connect");
     
                 BlockingConnectionHandler<T> handler = new BlockingConnectionHandler<>(
                     clientSock,  
                     encdecFactory.get(),  
-                    protocolFactory.get()
+                    protocolFactory.get(),
+                    this.connections
                 );
-    
+                
+                connections.addConnection(handler.getId(), handler);
+                
                 execute(handler);
             }
         } catch (IOException ex) {
@@ -58,5 +63,5 @@ public abstract class BaseServer<T> implements Server<T> {
     }
 
     protected abstract void execute(BlockingConnectionHandler<T>  handler);
-
+        
 }

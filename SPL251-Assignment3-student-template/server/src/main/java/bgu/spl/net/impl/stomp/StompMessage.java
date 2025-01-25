@@ -159,14 +159,13 @@ public class StompMessage {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        
         // Add command
         builder.append(command).append('\n');
         
         // Add headers
         for (Map.Entry<String, String> header : headers.entrySet()) {
             builder.append(header.getKey())
-                   .append(':')
+                   .append(": ")
                    .append(header.getValue())
                    .append('\n');
         }

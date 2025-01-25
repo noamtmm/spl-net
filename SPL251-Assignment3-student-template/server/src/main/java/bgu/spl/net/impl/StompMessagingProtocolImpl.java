@@ -15,6 +15,7 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
     private static final ConcurrentHashMap<Integer, String> activeUsers = new ConcurrentHashMap<>(); // connectionId -> username
     private static final ConcurrentHashMap<Integer, Map<String, String>> subscriptions = new ConcurrentHashMap<>(); // connectionId -> (topic -> subId)
     private static Integer messageIdCounter = 0;
+    //private static int receiptIdCounter = 0;
 
     @Override
     public void start(int connectionId, Connections<T> connections) {
@@ -27,8 +28,8 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
     @Override
     public void process(T message) {
         StompMessage stompMessage = StompMessage.parse((String) message);
+        System.out.println(stompMessage);
         String command = stompMessage.getCommand();
-
         switch (command) {
             case "CONNECT":
                 handleConnect(stompMessage);
@@ -56,12 +57,13 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
         return shouldTerminate;
     }
 
-    @SuppressWarnings("unchecked")
     private void handleConnect(StompMessage msg) {
         String login = msg.getHeader("login");
         String passcode = msg.getHeader("passcode");
         String acceptVersion = msg.getHeader("accept-version");
+        // String receipt = msg.getHeader("receipt");
 
+        // sendReceipt(receipt);
         if (login == null || passcode == null || acceptVersion == null) {
             sendError("Missing required headers");
             return;
@@ -81,6 +83,7 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
             }
             // Check if already connected
             if (isUserConnected(login)) {
+                System.out.println("User already logged in");
                 sendError("User already logged in");
                 return;
             }
@@ -88,21 +91,38 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
             // New user - register
             users.putIfAbsent(login, passcode);
         }
-
         // Mark user as active
         activeUsers.putIfAbsent(connectionId, login);
+        
+        StompMessage id_response = new StompMessage();
+        id_response.setCommand("ID");
+        id_response.addHeader("handler-id", String.valueOf(connectionId));
 
         // Send CONNECTED frame
         StompMessage connected = new StompMessage();
         connected.setCommand("CONNECTED");
         connected.addHeader("version", "1.2");
-        connections.send(connectionId, (T) connected.toString());
+       
+        @SuppressWarnings("unchecked")
+        boolean ans1 =  connections.send(connectionId, (T) connected.toString());
+        @SuppressWarnings("unchecked")
+        boolean ans2 =  connections.send(connectionId, (T) id_response.toString());
+
+        if (!ans1 || !ans2) {
+            System.out.println("Error sending CONNECTED frame");
+            shouldTerminate = true;
+        }
+        System.out.println("Client "+ connectionId +" connected successfuly");
     }
 
     private void handleSubscribe(StompMessage msg) {
         if (!isLoggedIn()) return;
 
-        String destination = msg.getHeader("destination");
+        //dealing with case of missing "/" in the beginning of the destination
+        String destination = msg.getHeader("destination").replaceFirst("^/", "");
+        if (!destination.startsWith("/")) {
+            destination = "/" + destination;
+        }
         String id = msg.getHeader("id");
 
         if (destination == null || id == null) {
@@ -122,7 +142,7 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
             sendReceipt(receipt);
         }
     }
-
+    
     private void handleUnsubscribe(StompMessage msg) {
         if (!isLoggedIn()) return;
 
@@ -203,7 +223,10 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
         // Clean up
         activeUsers.remove(connectionId);
         subscriptions.remove(connectionId);
-        shouldTerminate = true;
+        //shouldTerminate = true;
+        System.out.println("Client "+ connectionId +" logged out");
+
+        connections.disconnect(connectionId);
     }
 
     private boolean isLoggedIn() {
@@ -216,18 +239,24 @@ public class StompMessagingProtocolImpl<T> implements StompMessagingProtocol<T> 
 
     @SuppressWarnings("unchecked")
     private void sendError(String message) {
+        message = " "+message;
+        System.out.println("Error:" + message);
         StompMessage error = new StompMessage();
         error.setCommand("ERROR");
         error.addHeader("message", message);
         connections.send(connectionId, (T)error.toString());
+        activeUsers.remove(connectionId);
+        subscriptions.remove(connectionId);
         shouldTerminate = true;
+        System.out.println("Client "+ connectionId +" logged out");
+        
     }
 
     @SuppressWarnings("unchecked")
     private void sendReceipt(String receiptId) {
         StompMessage receipt = new StompMessage();
         receipt.setCommand("RECEIPT");
-        receipt.addHeader("receipt-id", receiptId);
+        receipt.addHeader("receipt-id", receiptId);  // Use counter instead of passed ID
         connections.send(connectionId, (T)receipt.toString());
     }
 }

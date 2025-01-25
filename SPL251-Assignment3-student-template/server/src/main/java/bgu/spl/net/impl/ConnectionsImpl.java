@@ -1,6 +1,5 @@
 package bgu.spl.net.impl;
 
-import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -35,23 +34,18 @@ public class ConnectionsImpl <T> implements Connections<T> {
 
     public void disconnect(int connectionId) {
         if (clients.get(connectionId) != null) {
-            try {
-                clients.get(connectionId).close();
-                clients.remove(connectionId);
-                for (String s : topicsSubscribers.keySet()){
-                    topicsSubscribers.get(s).remove(connectionId);
-                }
-            } 
-            catch (IOException e) {
-                e.printStackTrace();
+            
+            //clients.get(connectionId).close();
+            clients.remove(connectionId);
+            for (String s : topicsSubscribers.keySet()){
+                topicsSubscribers.get(s).remove(connectionId);
             }
+            
+            
         }
     }
 
-    public void addConnection(int uniqueId, ConnectionHandler<T> connection) {
-        if (clients.get(uniqueId) == null) {
-            uniqueId++;
-        }
+    public void addConnection(Integer uniqueId, ConnectionHandler<T> connection) {
         clients.putIfAbsent(uniqueId, connection);
     }    
 

@@ -4,30 +4,35 @@ import bgu.spl.net.impl.MessageEncoderDecoderImpl;
 import bgu.spl.net.impl.StompMessagingProtocolImpl;
 import bgu.spl.net.srv.Server;
 
+
 public class StompServer {
-    
     public static void main(String[] args) {
-        if (args.length != 2) {
-            System.out.println("Usage: StompServer <port> <server type>");
-            return;
+        if (args.length <= 1) {
+            System.out.println("Usage: StompServer <port>");
+            System.exit(1);
         }
-
         int port = Integer.parseInt(args[0]);
-        String serverType = args[1];
-
-        if (serverType.equalsIgnoreCase("tpc")) {
-            Server.threadPerClient(port, () -> new StompMessagingProtocolImpl<String>(), () -> new MessageEncoderDecoderImpl()).serve();
+        String type = args[1];
+        final int numThreads = Runtime.getRuntime().availableProcessors();
+        if (type.equals("tpc")) {
+            Server.threadPerClient(port, 
+                                () -> new StompMessagingProtocolImpl<>(),
+                                () -> new MessageEncoderDecoderImpl()).serve();;
         }
-        else if (serverType.equalsIgnoreCase("reactor")) {
-            Server.reactor(
-                Runtime.getRuntime().availableProcessors(),
-                port,
-                () -> new StompMessagingProtocolImpl<String>(),
-                () -> new MessageEncoderDecoderImpl()
-            ).serve();
+        else if (type.equals("reactor")) {
+            Server.reactor(numThreads, 
+                        port, 
+                        () -> new StompMessagingProtocolImpl<>(),
+                        () -> new MessageEncoderDecoderImpl() ).serve();
         }
         else {
-            System.out.println("Invalid server type. Use 'tpc' or 'reactor'");
+            throw new IllegalArgumentException("Invalid server type. Use 'tpc' or 'reactor'");
         }
     }
+    
+
+
+  
+
+   
 }

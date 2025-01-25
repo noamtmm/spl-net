@@ -22,7 +22,7 @@ int main (int argc, char *argv[]) {
     while (1) {
         const short bufsize = 1024;
         char buf[bufsize];
-        std::cin.getline(buf, bufsize);
+        std::cin.getline(buf, bufsize); // blocking 
 		std::string line(buf);
 		int len=line.length();
         if (!connectionHandler.sendLine(line)) {
